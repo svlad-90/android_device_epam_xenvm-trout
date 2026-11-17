@@ -2,6 +2,7 @@ LOCAL_PATH:= $(call my-dir)
 include $(CLEAR_VARS)
 
 PHONY_OVERRIDE_PACKAGES := \
+   com.android.hardware.sensors \
    com.android.hardware.uwb \
 
 LOCAL_MODULE := phony_override_packages
