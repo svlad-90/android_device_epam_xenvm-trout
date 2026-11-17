@@ -5,3 +5,6 @@
 /vendor/bin/hw/android\.hardware\.media\.c2-service-v4l2 u:object_r:mediacodec_exec:s0
 /vendor/bin/scmitest    u:object_r:scmitest_exec:s0
 /sys/devices/platform/scmi/arm-scmi\.[0-9]+\.auto/scmi_dev\.[0-9]+/iio:device[0-9]+(/.*)?    u:object_r:sysfs_iio_devices:s0
+/sys/devices/platform/scmi/arm-scmi\.[0-9]+\.auto/scmi_dev\.[0-9]+/iio:device[0-9]+/[^/]+_sampling_frequency$    u:object_r:sysfs_iio_file_ctrl:s0
+/sys/devices/platform/scmi/arm-scmi\.[0-9]+\.auto/scmi_dev\.[0-9]+/iio:device[0-9]+/scan_elements/[^/]+_en$    u:object_r:sysfs_iio_file_ctrl:s0
+/sys/devices/platform/scmi/arm-scmi\.[0-9]+\.auto/scmi_dev\.[0-9]+/iio:device[0-9]+/buffer/enable$    u:object_r:sysfs_iio_file_ctrl:s0
