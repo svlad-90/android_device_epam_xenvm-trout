@@ -157,13 +157,20 @@ $(error Unsupported CAMERA_HAL_TYPE '$(CAMERA_HAL_TYPE)', expected 'c2' or 'evs'
 endif
 
 $(call inherit-product, device/epam/aosp-xenvm-trout/build/graphics.mk)
+
+# Select the product sub-HAL list before inheriting Trout so this copy wins the
+# shared vendor destination. The policy guard must be loaded before Google-IIO.
+PRODUCT_COPY_FILES += \
+    device/epam/aosp-xenvm-trout/hals/sensors/policy/hals.conf:$(TARGET_COPY_OUT_VENDOR)/etc/sensors/hals.conf
+
 $(call inherit-product, device/google/trout/aosp_trout_arm64.mk)
 
-# Install the Trout multihal and its SCMI IIO sub-HAL. The multihal module
-# overrides the generic sensors APEX inherited from the Cuttlefish base.
+# Install the multihal, policy guard, and Trout SCMI IIO sub-HAL. The multihal
+# module overrides the generic sensors APEX inherited from the Cuttlefish base.
 PRODUCT_PACKAGES += \
     android.hardware.sensors-service.multihal \
     android.hardware.sensors-service.multihal.rc \
+    android.hardware.sensors@2.1-Xenvm-Policy-Subhal \
     android.hardware.sensors@2.1-Google-IIO-Subhal
 
 $(call inherit-product, device/epam/aosp-xenvm-trout/aosp_xenvm_trout_common.mk)
