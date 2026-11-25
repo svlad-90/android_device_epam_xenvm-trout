@@ -28,6 +28,9 @@ import sys
 import socket
 import time
 
+COMMAND_RESPONSE_ERROR = 'ERROR'
+
+
 class RawMeasurementReplay(object):
     """Replay complete satellite-measurement epochs on the Fix timeline."""
 
@@ -331,8 +334,8 @@ class CommandLoop(object):
         self.socket = socket
         self.commands = {}
 
-    def command(self, action, reaction):
-        self.commands[action] = reaction
+    def command(self, action, reaction, accepts_arguments=False):
+        self.commands[action] = (reaction, accepts_arguments)
 
     def loop(self):
         pending = b''
@@ -347,16 +350,39 @@ class CommandLoop(object):
                 if line_end < 0:
                     break
 
-                action = pending[:line_end]
+                line = pending[:line_end]
                 pending = pending[line_end + 1:]
-                reaction = self.commands.get(action)
-                if reaction is None:
-                    print("Unknown command '%s'" % action)
+                request_id, separator, line = line.partition(b':')
+                if (not separator or len(request_id) == 1 or
+                        not request_id.startswith(b'@') or
+                        not request_id[1:].isdigit()):
+                    print("Malformed correlated command")
                     self.socket.sendall(self.END_OF_RESPONSE)
                     continue
+                response_prefix = request_id + b':'
 
-                response = reaction().encode()
-                self.socket.sendall(response + self.END_OF_RESPONSE)
+                action, separator, arguments = line.partition(b',')
+                command = self.commands.get(action)
+                if command is None:
+                    print("Unknown command '%s'" % line)
+                    self.socket.sendall(response_prefix + self.END_OF_RESPONSE)
+                    continue
+
+                reaction, accepts_arguments = command
+                try:
+                    if separator and not accepts_arguments:
+                        raise ValueError('command does not accept arguments')
+                    if accepts_arguments:
+                        response = reaction(arguments)
+                    else:
+                        response = reaction()
+                except (TypeError, ValueError) as error:
+                    print("Command '%s' failed: %s" %
+                          (action.decode(errors='replace'), error))
+                    response = COMMAND_RESPONSE_ERROR
+                self.socket.sendall(response_prefix + response.encode() +
+                                    self.END_OF_RESPONSE)
+
 
 def main():
     parser = argparse.ArgumentParser(description="GNSS mock host agent")

@@ -315,9 +315,9 @@ class FixReplayTest(unittest.TestCase):
 class CommandLoopTest(unittest.TestCase):
     def test_stream_commands_may_be_fragmented_or_coalesced(self):
         sk = FakeSocket([
-            b'CMD_GET_',
-            b'LOCATION\nCMD_GET_RAW',
-            b'MEASUREMENT\nCMD_GET_SV_STATUS\n',
+            b'@100:CMD_GET_',
+            b'LOCATION\n@101:CMD_GET_RAW',
+            b'MEASUREMENT\n@102:CMD_GET_SV_STATUS\n',
             b'',
         ])
         loop = GNSS_REPLAY.CommandLoop(sk)
@@ -328,19 +328,44 @@ class CommandLoopTest(unittest.TestCase):
         loop.loop()
 
         self.assertEqual([
-            b'fix\n\n\n\n',
-            b'raw\n\n\n\n',
-            b'sv\n\n\n\n',
+            b'@100:fix\n\n\n\n',
+            b'@101:raw\n\n\n\n',
+            b'@102:sv\n\n\n\n',
         ], sk.responses)
 
+    def test_correlated_command_preserves_arguments(self):
+        sk = FakeSocket([
+            b'@103:COMMAND,one,two\n',
+            b'',
+        ])
+        received_arguments = []
+        loop = GNSS_REPLAY.CommandLoop(sk)
+        loop.command(
+            b'COMMAND',
+            lambda arguments: received_arguments.append(arguments) or 'OK',
+            accepts_arguments=True)
+
+        loop.loop()
+
+        self.assertEqual([b'one,two'], received_arguments)
+        self.assertEqual([b'@103:OK\n\n\n\n'], sk.responses)
+
     def test_unknown_command_returns_empty_framed_response(self):
-        sk = FakeSocket([b'UNKNOWN\n', b''])
+        sk = FakeSocket([b'@104:UNKNOWN\n', b''])
         loop = GNSS_REPLAY.CommandLoop(sk)
 
         loop.loop()
 
-        self.assertEqual([b'\n\n\n\n'], sk.responses)
+        self.assertEqual([b'@104:\n\n\n\n'], sk.responses)
 
+    def test_uncorrelated_command_is_rejected(self):
+        sk = FakeSocket([b'CMD_GET_LOCATION\n', b''])
+        loop = GNSS_REPLAY.CommandLoop(sk)
+        loop.command(b'CMD_GET_LOCATION', lambda: 'fix')
+
+        loop.loop()
+
+        self.assertEqual([b'\n\n\n\n'], sk.responses)
 
 if __name__ == '__main__':
     unittest.main()
