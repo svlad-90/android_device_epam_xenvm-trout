@@ -41,15 +41,20 @@ These tests cover:
 
 ### GNSS backend protocol
 
-The Android GNSS HAL sends these commands over the GNSS virtio-console port:
+The Android GNSS HAL sends these commands over the GNSS virtio-console port.
+Each request carries an opaque correlation ID that the backend copies into the
+response:
 
-- `CMD_GET_LOCATION\n`
-- `CMD_GET_RAWMEASUREMENT\n`
-- `CMD_GET_SV_STATUS\n`
+- `@<id>:CMD_GET_LOCATION\n`
+- `@<id>:CMD_GET_RAWMEASUREMENT\n`
+- `@<id>:CMD_GET_SV_STATUS\n`
 
 Requests are single-line commands terminated by one newline byte. Responses
-may contain multiple CSV lines and retain the existing four-newline end marker
-expected by Android `DeviceFileReader`. The backend returns the current
+start with the matching `@<id>:` prefix, may contain multiple CSV lines, and
+retain the existing four-newline end marker expected by Android
+`DeviceFileReader`. This lets the HAL discard a delayed response after a
+timeout instead of treating it as the response to the next command. Requests
+without a valid correlation ID are rejected. The backend returns the current
 snapshot for each request; Android controls callback timing by choosing when to
 poll the backend. While location reporting is active, the HAL polls measurement
 snapshots at the shorter of the location and measurement intervals. The backend
